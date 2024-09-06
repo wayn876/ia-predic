@@ -1,91 +1,136 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mikros - Clasificador de Dígitos</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <title>Juego F1 en 3D</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-        }
-        canvas {
-            border: 1px solid black;
-            margin: 10px;
-        }
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
     </style>
 </head>
 <body>
-    <h1>Mikros - Clasificador de Dígitos</h1>
-    <p>Dibuja un dígito en el lienzo y haz clic en "Predecir" para ver el resultado.</p>
-    <canvas id="canvas" width="280" height="280"></canvas>
-    <br>
-    <button id="predict">Predecir</button>
-    <p id="result"></p>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/PointerLockControls.js"></script>
     <script>
-        // Configuración del canvas
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 14;
-        ctx.lineCap = 'round';
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Configuración básica de Three.js
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
 
-        let drawing = false;
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-        // Funciones para el dibujo
-        canvas.addEventListener('mousedown', (event) => {
-            drawing = true;
-            ctx.beginPath();
-            ctx.moveTo(event.offsetX, event.offsetY);
+        // Crear una fuente de luz
+        const ambientLight = new THREE.AmbientLight(0x404040); // Luz ambiental suave
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Luz direccional
+        directionalLight.position.set(5, 10, 7.5).normalize();
+        scene.add(directionalLight);
+
+        // Crear una pista con bordes elevados
+        const trackGeometry = new THREE.PlaneGeometry(50, 50); // Hacer la pista más grande
+        const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
+        const track = new THREE.Mesh(trackGeometry, trackMaterial);
+        track.rotation.x = -Math.PI / 2; // Alineación horizontal
+        track.position.y = -0.1; // Ajustar altura para que esté ligeramente por debajo del coche
+        scene.add(track);
+
+        // Crear un cubo para representar el coche
+        const carGeometry = new THREE.BoxGeometry(1, 0.5, 2);
+        const carMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        const car = new THREE.Mesh(carGeometry, carMaterial);
+        scene.add(car);
+
+        // Crear un volante (representado como un cilindro)
+        const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
+        const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff });
+        const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        wheel.rotation.z = Math.PI / 2; // Alineación del volante
+        wheel.position.set(0, 0.8, 0);
+        car.add(wheel); // Añadir el volante al coche
+
+        // Posicionar la cámara
+        camera.position.set(0, 2, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Agregar controles de primera persona
+        const controls = new THREE.PointerLockControls(camera, renderer.domElement);
+
+        document.addEventListener('click', () => {
+            controls.lock();
         });
 
-        canvas.addEventListener('mousemove', (event) => {
-            if (drawing) {
-                ctx.lineTo(event.offsetX, event.offsetY);
-                ctx.stroke();
+        // Configuración de sonido
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+
+        const sound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        audioLoader.load('https://www.soundjay.com/button/beep-07.wav', (buffer) => {
+            sound.setBuffer(buffer);
+            sound.setLoop(true);
+            sound.setVolume(0.5);
+        });
+
+        // Variables para controlar el movimiento del coche
+        const speed = 0.1;
+        const turnSpeed = 0.05;
+        const keys = {};
+
+        window.addEventListener('keydown', (event) => {
+            keys[event.code] = true;
+        });
+
+        window.addEventListener('keyup', (event) => {
+            keys[event.code] = false;
+        });
+
+        function moveCar() {
+            let moving = false;
+            if (keys['KeyW']) {
+                car.position.z -= speed;
+                moving = true;
             }
-        });
-
-        canvas.addEventListener('mouseup', () => {
-            drawing = false;
-            ctx.closePath();
-        });
-
-        // Función para convertir el canvas en una imagen tensorial
-        function getCanvasTensor() {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = new Uint8Array(imageData.data.buffer);
-            const tensor = tf.tensor3d(data, [canvas.height, canvas.width, 4]);
-            return tensor.mean(2).toFloat().expandDims(0).expandDims(-1).div(255);
+            if (keys['KeyS']) {
+                car.position.z += speed;
+                moving = true;
+            }
+            if (keys['KeyA']) {
+                car.rotation.y += turnSpeed;
+                wheel.rotation.y += turnSpeed; // Hacer girar el volante
+            }
+            if (keys['KeyD']) {
+                car.rotation.y -= turnSpeed;
+                wheel.rotation.y -= turnSpeed; // Hacer girar el volante
+            }
+            if (moving && !sound.isPlaying) {
+                sound.play(); // Reproducir sonido si el coche está en movimiento
+            } else if (!moving && sound.isPlaying) {
+                sound.stop(); // Detener sonido si el coche no se mueve
+            }
         }
 
-        // Modelo preentrenado (MNIST)
-        let model;
-        async function loadModel() {
-            model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mnist/model.json');
+        function animate() {
+            requestAnimationFrame(animate);
+
+            moveCar();
+
+            // Actualizar el volante (simplemente para demostrar la rotación)
+            wheel.rotation.z += 0.02;
+
+            renderer.render(scene, camera);
         }
 
-        loadModel();
+        animate();
 
-        // Función para hacer la predicción
-        document.getElementById('predict').addEventListener('click', async () => {
-            if (!model) {
-                alert('Modelo aún no cargado');
-                return;
-            }
-            
-            const tensor = getCanvasTensor();
-            const prediction = model.predict(tensor);
-            const result = prediction.argMax(-1).dataSync()[0];
-            
-            document.getElementById('result').innerText = `Predicción: ${result}`;
+        // Manejo de redimensionamiento de la ventana
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
         });
     </script>
 </body>
 </html>
-
