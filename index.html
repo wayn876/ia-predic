@@ -34,8 +34,9 @@
 
         // Crear una pista colorida
         const trackGeometry = new THREE.PlaneGeometry(50, 50);
+        const textureLoader = new THREE.TextureLoader();
         const trackMaterial = new THREE.MeshBasicMaterial({
-            map: new THREE.TextureLoader().load('https://www.w3schools.com/w3images/road.jpg'),
+            map: textureLoader.load('road.jpg'),
             side: THREE.DoubleSide
         });
         const track = new THREE.Mesh(trackGeometry, trackMaterial);
