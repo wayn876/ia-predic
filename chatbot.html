@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mikros - Clasificador de Dígitos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mikros - Clasificador de Dígitos</h1>
+    <p>Dibuja un dígito en el lienzo y haz clic en "Predecir" para ver el resultado.</p>
+    <canvas id="canvas" width="280" height="280"></canvas>
+    <br>
+    <button id="predict">Predecir</button>
+    <p id="result"></p>
+
+    <script>
+        // Configuración del canvas
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 14;
+        ctx.lineCap = 'round';
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        let drawing = false;
+
+        // Funciones para el dibujo
+        canvas.addEventListener('mousedown', (event) => {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(event.offsetX, event.offsetY);
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            if (drawing) {
+                ctx.lineTo(event.offsetX, event.offsetY);
+                ctx.stroke();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            ctx.closePath();
+        });
+
+        // Función para convertir el canvas en una imagen tensorial
+        function getCanvasTensor() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = new Uint8Array(imageData.data.buffer);
+            const tensor = tf.tensor3d(data, [canvas.height, canvas.width, 4]);
+            return tensor.mean(2).toFloat().expandDims(0).expandDims(-1).div(255);
+        }
+
+        // Modelo preentrenado (MNIST)
+        let model;
+        async function loadModel() {
+            model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mnist/model.json');
+        }
+
+        loadModel();
+
+        // Función para hacer la predicción
+        document.getElementById('predict').addEventListener('click', async () => {
+            if (!model) {
+                alert('Modelo aún no cargado');
+                return;
+            }
+            
+            const tensor = getCanvasTensor();
+            const prediction = model.predict(tensor);
+            const result = prediction.argMax(-1).dataSync()[0];
+            
+            document.getElementById('result').innerText = `Predicción: ${result}`;
+        });
+    </script>
+</body>
+</html>
