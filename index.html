@@ -21,39 +21,45 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Establecer color de fondo
+        renderer.setClearColor(0x87CEEB); // Color de cielo
+
         // Crear una fuente de luz
         const ambientLight = new THREE.AmbientLight(0x404040); // Luz ambiental suave
         scene.add(ambientLight);
 
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Luz direccional
-        directionalLight.position.set(5, 10, 7.5).normalize();
+        directionalLight.position.set(5, 10, 5).normalize();
         scene.add(directionalLight);
 
-        // Crear una pista con bordes elevados
-        const trackGeometry = new THREE.PlaneGeometry(50, 50); // Hacer la pista más grande
-        const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
+        // Crear una pista colorida
+        const trackGeometry = new THREE.PlaneGeometry(50, 50);
+        const trackMaterial = new THREE.MeshBasicMaterial({
+            map: new THREE.TextureLoader().load('https://www.w3schools.com/w3images/road.jpg'),
+            side: THREE.DoubleSide
+        });
         const track = new THREE.Mesh(trackGeometry, trackMaterial);
         track.rotation.x = -Math.PI / 2; // Alineación horizontal
-        track.position.y = -0.1; // Ajustar altura para que esté ligeramente por debajo del coche
+        track.position.y = -0.1;
         scene.add(track);
 
         // Crear un cubo para representar el coche
         const carGeometry = new THREE.BoxGeometry(1, 0.5, 2);
         const carMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
         const car = new THREE.Mesh(carGeometry, carMaterial);
+        car.position.y = 0.25;
         scene.add(car);
 
         // Crear un volante (representado como un cilindro)
         const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
         const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff });
         const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        wheel.rotation.z = Math.PI / 2; // Alineación del volante
+        wheel.rotation.z = Math.PI / 2;
         wheel.position.set(0, 0.8, 0);
-        car.add(wheel); // Añadir el volante al coche
+        car.add(wheel);
 
-        // Posicionar la cámara
-        camera.position.set(0, 2, 10);
-        camera.lookAt(0, 0, 0);
+        // Posicionar la cámara en el coche
+        camera.position.set(0, 1, 2); // Dentro del coche
 
         // Agregar controles de primera persona
         const controls = new THREE.PointerLockControls(camera, renderer.domElement);
